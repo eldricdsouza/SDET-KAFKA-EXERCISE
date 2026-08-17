@@ -7,6 +7,8 @@ import com.example.orderservice.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -22,6 +24,9 @@ class OrderServiceSmokeTest {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @MockBean
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Test
     void contextLoads() {
