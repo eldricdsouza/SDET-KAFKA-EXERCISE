@@ -13,7 +13,7 @@ The basic workflow is:
 
 1. A client calls `POST /orders` on the Order Service.
 2. The Order Service stores the order with status `PENDING`.
-3. The Order Service emits an `OrderCreated` event to Kafka on the `orders.created` topic.
+3. After the order has been committed to its database, the Order Service emits an `OrderCreated` event to Kafka on the `orders.created` topic.
 4. The Payment Service consumes that event.
 5. If the customerId is `FAIL-PAYMENT`, the payment service emits a deterministic `PaymentFailed` event to `payments.failed`.
 6. Otherwise, it emits a `PaymentCompleted` event to `payments.completed`.
@@ -44,6 +44,8 @@ This starts Kafka on `localhost:9092` using a modern broker configuration withou
 ```bash
 mvn clean package
 ```
+
+The included smoke tests use a mocked Kafka producer, so the build does not require a broker. Kafka is required when running the services and exercising the end-to-end workflow.
 
 ### Start the services
 

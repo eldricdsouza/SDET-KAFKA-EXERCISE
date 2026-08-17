@@ -3,16 +3,17 @@ package com.example.orderservice.service;
 import com.example.orderservice.dto.OrderRequest;
 import com.example.orderservice.dto.OrderResponse;
 import com.example.orderservice.exception.OrderNotFoundException;
-import com.example.orderservice.kafka.OrderEventProducer;
+import com.example.orderservice.kafka.OrderCreatedNotification;
 import com.example.orderservice.model.Order;
 import com.example.orderservice.model.OrderStatus;
 import com.example.orderservice.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -21,11 +22,11 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
-    private final OrderEventProducer orderEventProducer;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public OrderService(OrderRepository orderRepository, OrderEventProducer orderEventProducer) {
+    public OrderService(OrderRepository orderRepository, ApplicationEventPublisher applicationEventPublisher) {
         this.orderRepository = orderRepository;
-        this.orderEventProducer = orderEventProducer;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional
@@ -33,11 +34,23 @@ public class OrderService {
         log.info("Creating order for customerId={}, amount={}, currency={}", request.getCustomerId(), request.getAmount(), request.getCurrency());
 
         var orderId = UUID.randomUUID().toString();
-        var order = new Order(orderId, request.getCustomerId(), request.getAmount(), request.getCurrency().toUpperCase(), OrderStatus.PENDING);
+        var order = new Order(
+                orderId,
+                request.getCustomerId(),
+                request.getAmount(),
+                request.getCurrency().toUpperCase(Locale.ROOT),
+                OrderStatus.PENDING
+        );
         var saved = orderRepository.save(order);
 
         log.info("Order persisted: orderId={}, status={}", saved.getOrderId(), saved.getStatus());
-        orderEventProducer.publishOrderCreated(saved);
+        applicationEventPublisher.publishEvent(new OrderCreatedNotification(
+                saved.getOrderId(),
+                saved.getCustomerId(),
+                saved.getAmount(),
+                saved.getCurrency()
+        ));
+        log.info("OrderCreated event registered for post-commit publication: orderId={}", saved.getOrderId());
         return OrderResponse.from(saved);
     }
 
